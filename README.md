@@ -38,8 +38,8 @@ The full list of halflife options is:
 7. Print current values of parameters to screen;
 8. Write output with current values of parameters or different point spacing;
 9. Write input to file as 2 (x y) or 3 (x y dy) column data;
-a. Auto-fill initial parameters and perform fit;
-p. Display spectrum;
-k. Kill all or selected plot windows;
-s. Set or adjust spectrum limits for fitting;
+9. Auto-fill initial parameters and perform fit;
+9. Display spectrum;
+9. Kill all or selected plot windows;
+9. Set or adjust spectrum limits for fitting;
 0. Quit.
