@@ -22,11 +22,11 @@ components of the fit.
 The integral of the whole spectrum and of each component over the spectrum
 range is also written to the output .fit file
 
-The current version of **halflife** uses
+The current version of **`halflife`** uses
 [**xmgrace**](https://plasma-gate.weizmann.ac.il/Grace/)
 for plotting the results of the fit.
 
-The 'auto-fill initial parameters' option can be disabled from appearing
+The 'Auto-fill initial parameters' option can be disabled from appearing
 in the menu list by setting the `AUTO` macro to 0 prior to compiling.
 This is useful for teaching settings.
 
