@@ -9,14 +9,15 @@ resolution (Gaussian).
 For a derivation of the mathematical convolution function used see file
 [**halflife_gauss_exp_conv.pdf**](halflife_gauss_exp_conv.pdf)
 
-Half-life accepts the following formats:
+Program `halflife` accepts the following formats:
 
 - ASCII: 1 (y), 2 (x,y) and 3 (x,y,dy) column formats;
 - ORTEC (MAESTRO) .Spe (1-column ASCII) and .Chn (binary) formats with headers
 and trailers.
 
-halflife writes out a .fit output file with the parameters values
-as well as the fit function and individually all the components of the fit.
+On achieving a good fit `halflife` writes out a .fit file with the
+parameters values as well as the fit function and individually all the
+components of the fit.
 
 The integral of the whole spectrum and of each component over the spectrum
 range is also written to the output .fit file
@@ -26,10 +27,10 @@ The current version of **halflife** uses
 for plotting the results of the fit.
 
 The 'auto-fill initial parameters' option can be disabled from appearing
-in the menu list by setting the AUTO macro to 0 prior to compiling.
+in the menu list by setting the `AUTO` macro to 0 prior to compiling.
 This is useful for teaching settings.
 
-The full list of halflife options is:
+The full list of `halflife` options is:
 
 1. Enter filename and read data;
 2. Enter initial parameters;
