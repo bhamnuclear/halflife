@@ -7,12 +7,13 @@ This is ideally suited to fitting time spectra for radioactive decay
 resolution (Gaussian).
 
 For a derivation of the mathematical convolution function used see file
-**halflife_gauss_exp_conv.pdf**
+[**halflife_gauss_exp_conv.pdf**](halflife_gauss_exp_conv.pdf)
 
 Half-life accepts the following formats:
 
-- ASCII: 1 (y), 2 (x,y) and 3 (x,y,dy) column formats
-- ORTEC (MAESTRO) .Spe and .Chn formats
+- ASCII: 1 (y), 2 (x,y) and 3 (x,y,dy) column formats;
+- ORTEC (MAESTRO) .Spe (1-column ASCII) and .Chn (binary) formats with headers
+and trailers.
 
 halflife writes out a .fit output file with the parameters values
 as well as the fit function and individually all the components of the fit.
@@ -20,8 +21,9 @@ as well as the fit function and individually all the components of the fit.
 The integral of the whole spectrum and of each component over the spectrum
 range is also written to the output .fit file
 
-The current version of **halflife** uses **xmgrace** for plotting the results
-of the fit.
+The current version of **halflife** uses
+[**xmgrace**](https://plasma-gate.weizmann.ac.il/Grace/)
+for plotting the results of the fit.
 
 The 'auto-fill initial parameters' option can be disabled from appearing
 in the menu list by setting the AUTO macro to 0 prior to compiling.
@@ -38,8 +40,8 @@ The full list of halflife options is:
 7. Print current values of parameters to screen;
 8. Write output with current values of parameters or different point spacing;
 9. Write input to file as 2 (x y) or 3 (x y dy) column data;
-9. Auto-fill initial parameters and perform fit;
-9. Display spectrum;
-9. Kill all or selected plot windows;
-9. Set or adjust spectrum limits for fitting;
+0. Auto-fill initial parameters and perform fit;
+1. Display spectrum;
+2. Kill all or selected plot windows;
+3. Set or adjust spectrum limits for fitting;
 0. Quit.
