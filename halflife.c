@@ -66,6 +66,11 @@ struct ft {
     int    freepars[NUMPARS], nfp, ndp, nad, ad[NUMPARS];
 } ft;
 
+/*system function declarations needed for -ansi compile flag*/
+double  erf(double x);      /*/usr/include/bits/mathcall.h included via math.h*/
+FILE    *popen(const char *command, const char *type);  /*/usr/include/stdio.h*/
+int     pclose(FILE *stream);                           /*/usr/include/stdio.h*/
+
 int 	eval(double *pars, double x, double *fit, double *derivs, int ch, int mode);
 double  gauss(double x, double fwhm);
 double  gauss_exp(double x, double thalf, double fwhm);
@@ -80,7 +85,7 @@ int 	cswap4(int decim);
 int 	cswap2(int decim);
 void 	file_status(char *fname, int len);
 int 	find_strt_end_zeros(int numch);
-int 	fitter(int, double *chisqr, int vb);
+int 	fitter(int, double *chisq, int vb);
 void 	get_ans(char ans[], int num, int md);
 void 	get_line(char ans[], int len);
 int 	get_mode(int md, int exp);
@@ -110,7 +115,7 @@ void    store_colours();
 void 	swapb2(char *buf);
 void 	swapb4(char *buf);
 void 	write_output(char inname[], char outname[], double init[],
-	    double x[], double *fit, double chisqr, int mode);
+	    double x[], double *fit, double chisq, int mode);
 
 double fit, derivs[NUMPARS], bkgnd, fact[NUMPARS+1];
 double x12[2], pi, spc[1], sp_max, sp_sum;
@@ -122,7 +127,7 @@ char par_nm[NUMPARS+1][CHPLEN], func_nm[NUMFUNC+1][CHFLEN], clr[10][12], P_OPT_E
 /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 int main(int argc, char *argv[])
 {
-    extern double fit, derivs[NUMPARS], bkgnd, fact[NUMPARS+1], spc[1],x12[2];
+    extern double fit, derivs[NUMPARS], bkgnd, fact[NUMPARS+1], spc[1], x12[2];
     extern int gdfit, lim[2], pid[40], pcnt;
     extern char par_nm[NUMPARS+1][CHPLEN], func_nm[NUMFUNC+1][CHFLEN], clr[10][12];
     double  chisq = 0.0, init[NUMPARS+1], bklo = 0.0, bklo2, chisqo = 10000.0;
@@ -217,7 +222,9 @@ int main(int argc, char *argv[])
 		" or: %s InputFileName\n",argv[0],argv[0]);
 	if (argc == 2) printf(" %s***File %s does not exist%s\n",
             clr[1],argv[1],clr[0]);
-        return -1;
+        
+        printf("    %sExiting...%s\n\n",clr[1],clr[0]);
+        return 0;
     }
     else if (argc == 2)
     {
@@ -239,19 +246,19 @@ int main(int argc, char *argv[])
 		while (stat(inname, &statbuf))
                 {
                     printf("Type ASCII data filename\n");
-		    if (strlen(inname) > 0 ) printf(" [<Enter> for %s, -1 to exit]\n",inname);
+		    if (strlen(inname) > 0 ) printf(" [<Enter> for %s, q to exit]\n",inname);
     	    	    get_line(nm, CHLEN);
     	    	    if (strlen(nm) == (int)0 && (nm[0] == ((char)0))) ;
     	    	    else strcpy(inname, nm);
-                    if (nm[0] == '-' && nm[1] == '1')
+                    if (nm[0] == 'q' && strlen(nm) == (int)1)
                     {
-                        printf("   %sExiting...%s\n",clr[1],clr[0]);
+                        printf("    %sExiting...%s\n\n",clr[1],clr[0]);
                         return 0;
                     }
                     else if (stat(inname, &statbuf))
                         printf("%s***File %s does not exist%s\n",clr[1],inname,clr[0]);
                 }
-	    }            
+	    }
             flginp = 0;
 
     	    /*check if input file has .fit extension and warn if yes*/
@@ -264,15 +271,19 @@ int main(int argc, char *argv[])
     	    set_ext(outname, "_full.fit");
     	    printf("Output filename for fit: %s\n", outname);
     	    file_status(outname, CHLEN);
-   	    strncpy(nofit, outname, CHLEN);
-   	    strncpy(smooth, outname, CHLEN);
-    	    set_ext(smooth,"_func.fit");
+            strncpy(nofit, outname, CHLEN);
+            strncpy(smooth, outname, CHLEN);
+            set_ext(smooth,"_func.fit");
             
     	    /*read in ascii data*/
-    	    if (!strcmp( (strrchr(inname,'.')), ".Chn" ))
+            /*before checking for extension have to check if '.' is present*/
+    	    if ( strrchr(inname,'.') && !strcmp( (strrchr(inname,'.')), ".Chn") )
                 ft.ndp = maestro_read(inname, &col);
             /*if not assume spectrum is ASCII*/
-            else ft.ndp = ascii_read(inname, &col);
+            else
+                ft.ndp = ascii_read(inname, &col);
+            /*on file read error exit*/
+            if (ft.ndp == -1) return -1;
             
             /*store full spectrum length including zeros*/
             numch = ft.ndp;
@@ -304,7 +315,7 @@ int main(int argc, char *argv[])
             /*ask about opening data in P_PROG to aid choosing initial parameters
                 providing P_PROG exists and file is not an ORTEC (.Spe or .Chn) file*/
             plot_data(ans, cmd, inname, outname, plt, 1);       
- 	}
+        }
 	/*if auto mode, mode is set first to NUMOPT then straight to md = 2
             to call scaler*/
         else if (md == 2)
@@ -828,15 +839,15 @@ int ascii_read(char * fname, int *col)
     /*check for '.Spe' extension and if ORTEC ascii header is present.
         if so, skip header*/
     ortec_head_srch_skip(fname, file1, &mxchan);
-            
     /*get number of columns in ascii file*/
     col_determ(file1, col);
-    printf("Ascii %d Column format....\n", *col);
     if (*col == 0)
     {
-	printf("No numbers found in file %s; Exiting....", fname);
+	printf("%s***No suitable data in file %s; Exiting...%s\n\n",
+                clr[1],fname,clr[0]);
 	return -1;
     }
+    printf("Ascii %d Column format....\n", *col);
     
     lchan = mxchan;
     for (chan = 0; chan < mxchan; chan++)
@@ -1063,7 +1074,14 @@ void col_determ(FILE *file1, int *col)
     	{
     	    /*if blank space, increment blank counter and continue*/
     	    if ( (hash == ' ') || (hash == '\t') ) i++;
-	    
+	    /*check for non-numbers*/
+            else if ((hash != ' ') && (hash != '\t') && (isdigit(hash)) == 0)
+            {
+                printf("%s***Input is not a valid data file. Illegal characters found.%s\n",
+                        clr[1],clr[0]);
+                *col = 0;
+                return ;
+            }
     	    /*if character is a digit*/
     	    /*check how many columns of numbers are present*/
     	    else if ( (isdigit(hash)) != 0 )
@@ -1074,7 +1092,7 @@ void col_determ(FILE *file1, int *col)
 		    /*brackets necessary round *col to increment what it
 		    	points to not the address!*/
 		    (*col)++;
-/*		    printf("col. = %d\n", *col); */
+		    /*printf("col. = %d\n", *col); */
 		}
 		
     		/*otherwise if > MAXCOLS columns set 1 col. flag and hope for best*/
@@ -2301,7 +2319,7 @@ void spec_int(void)
 } /*END spec_int()*/
 
 /*==========================================================================*/
-/*spec_max: integrate spectrum                                              */
+/*spec_max: find location of spectrum maximum                               */
 /****************************************************************************/
 void spec_max(int mode)
 {
