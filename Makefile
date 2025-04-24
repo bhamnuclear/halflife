@@ -1,15 +1,18 @@
-TARGET = halflife
+program1 = halflife
+program2 = halflife_double
 CC = gcc
 CFLAGS = -Wall -lm -O2 -pedantic
 
 .PHONY: default all clean
+.DEFAULT_GOAL:=all
 
-all: $(TARGET)
+all: $(program1) $(program2)
 
-default: $(TARGET)
-
-$(TARGET): halflife.c
+$(program1): %: %.c
 	$(CC) $< $(CFLAGS) -o $@ 
-clean:
-	\rm -f $(TARGET)
 
+$(program2): %: %.c
+	$(CC) $< $(CFLAGS) -o $@ 
+
+clean:
+	\rm -f $(program1) $(program2)
