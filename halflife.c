@@ -88,8 +88,10 @@ int 	find_strt_end_zeros(int numch);
 int 	fitter(int, double *chisq, int vb);
 void 	get_ans(char ans[], int num, int md);
 void 	get_line(char ans[], int len);
+void    get_line_file(FILE *file, char ans[], int len);
 int 	get_mode(int md, int exp);
 void 	get_pars(char ans0[], double pars[], int num);
+void    get_pars_file(FILE *file, float pars[], int num);
 void 	itoa(int n, char s[]);
 int     maestro_read(char fname[], int *col);
 int 	matinv(double *array, int nip, int npars);
@@ -1059,8 +1061,7 @@ void col_determ(FILE *file1, int *col)
     while (1)
     {
     	/*read until first digit of first number*/
-	while ( isdigit(hash = fgetc(file1)) == 0 )
-    	    ;
+	while ( isdigit(hash = fgetc(file1)) == 0 ) ;
 	
 	*col = 1;
     	/*found first digit of first number. read rest of digits*/
@@ -1069,13 +1070,13 @@ void col_determ(FILE *file1, int *col)
 
     	/*push the last character back on the stream*/
     	ungetc(hash, file1);
-    	/*now next test characters until end of line*/
+    	/*now test characters until end of line*/
     	while ( (hash = fgetc(file1)) != '\n' )
     	{
-    	    /*if blank space, increment blank counter and continue*/
-    	    if ( (hash == ' ') || (hash == '\t') ) i++;
-	    /*check for non-numbers*/
-            else if ((hash != ' ') && (hash != '\t') && (isdigit(hash)) == 0)
+    	    /*if blank space,increment blank counter and continue*/
+    	    if ( (hash == ' ') || (hash == '\t') || (hash == '\r')) i++;
+    	    /*check how many columns of numbers are present*/
+            else if ( (isdigit(hash)) == 0 )
             {
                 printf("%s***Input is not a valid data file. Illegal characters found.%s\n",
                         clr[1],clr[0]);
@@ -1086,7 +1087,7 @@ void col_determ(FILE *file1, int *col)
     	    /*check how many columns of numbers are present*/
     	    else if ( (isdigit(hash)) != 0 )
     	    {
-    		/*if number is second column set 2 col. flag*/
+    		/*if number increment col flag*/
     		if ( i > 0)
 		{
 		    /*brackets necessary round *col to increment what it
@@ -1584,6 +1585,24 @@ void get_line(char ans[], int len)
 } /*END get_line()*/
 
 /*==========================================================================*/
+/* get_line_file: read a line from a file into s, return a length           */
+/****************************************************************************/
+void get_line_file(FILE *file, char ans[], int len)
+{
+    int     c, i = 0;
+
+    memset(ans,'\0',sizeof(char)*len);
+    /*note that scanf() leaves a carriage return in the keyboard buffer*/
+    while ( (c = fgetc(file)) != '\n' && c != EOF && i < len) ans[i++] = c;
+    
+    /*remove any trailing '\r' carriage returns that are often prior to
+      '\n' line feeds*/
+    if (ans[i-1] == '\r') i--;
+    
+    ans[i] = '\0';
+} /*END get_line_file()*/
+
+/*==========================================================================*/
 /* get_mode: get mode from user input	    	    	    	    	    */
 /****************************************************************************/
 int get_mode(int md, int aut)
@@ -1675,6 +1694,39 @@ void get_pars(char ans0[], double pars[], int num)
     }
     printf("\n");
 } /*END get_pars()*/
+
+/*==========================================================================*/
+/* get_pars_file: extract separated numbers from string ans0 read from file */
+/****************************************************************************/
+void get_pars_file(FILE *file, float pars[], int num)
+{
+    int     i, j = 0, k, minus;
+    char    ans0[CHLEN] = "", ans1[40] = "";
+
+    get_line_file(file, ans0, CHLEN);
+    
+    for (i = 0; i < num; i++)
+    {
+	k = 0;
+	minus = 0;
+    	memset(ans1,'\0',sizeof(ans1));
+	while ( ! isdigit(ans0[j]) )
+	{
+	    if (ans0[j] == '-') minus = 1;
+	    j++;
+	}
+	if (minus == 1)
+	{
+	    j -= 1;
+	    ans0[j] = '-';
+	}	
+	while( ans0[j] != '\n' && ans0[j] != ' ' && ans0[j] != ','
+		&& j < strlen(ans0) ) ans1[k++] = ans0[j++];
+	
+	j++;
+	pars[i] = atof(ans1);
+    }
+} /*END get_pars_file()*/
 
 /*===========================================================================*/
 /* convert integer n to string */
@@ -1918,7 +1970,9 @@ int matinv(double *array, int norder, int dim)
 /****************************************************************************/
 void ortec_head_srch_skip(char *fname, FILE *file, int *mxchan)
 {
-    int     hash = 0, tp1 = 0, tp2 = 0;
+    float   rlt[2];
+    int     hash = 0;
+    char    ans[CHLEN] = "";
     fpos_t  pos;
     
     if ( strrchr(fname,'.') && !strcmp(strrchr(fname,'.'),".Spe") )
@@ -1932,12 +1986,27 @@ void ortec_head_srch_skip(char *fname, FILE *file, int *mxchan)
         else if (hash == '$')
         {
             printf("%sFound ORTEC ASCII header...skipping to data.%s\n",clr[3],clr[0]);
-            skip_lines(file, 11);
+            /*skip_lines(file, 11);*/
+            skip_lines(file, 7);
             
-            /*read number of channels from file*/
-            hash = fscanf(file, "%d %d",&tp1,&tp2);
-            /*add one as read loop has < not <=*/
-            *mxchan = tp2 + 1;
+            /*get and print date*/
+            get_line_file(file, ans, CHLEN);
+            printf("%sSpectrum date: %s%s\n",clr[2],ans,clr[0]);
+            
+            /*get and print real/live time*/
+            skip_lines(file, 1);
+            rlt[0] = 0.0; rlt[1] = 0.0;
+            get_pars_file(file, rlt, 2);
+            printf("    %sLive time: %.2f s, Real time %.2f s%s\n",
+                clr[2],rlt[0],rlt[1],clr[0]);
+            
+            /*read start and end channel numbers from file*/
+            skip_lines(file, 1);
+            get_pars_file(file, rlt, 2);
+            /*add one as read loop for data has < not <=*/
+            *mxchan = (int)(rlt[1]) + 1;
+            printf("    %sFirst chan: %d, last chan %d%s\n",
+                clr[2],(int)rlt[0],(int)rlt[1],clr[0]);
         }
         else
         {
