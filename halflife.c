@@ -2170,22 +2170,33 @@ void plot_scale_set_par(char p_par[], double val, char ans[])
 void prep_write(char inname[], char outname[], char nm[], char ans[],
         int numch, int col)
 { 
+    char alt[10];
+    
     strcpy(nm, inname);
     /*put col as char in ans[1]*/
     itoa(col, ans+1);
     ans[0] = '_';
     strncpy(ans+2, "col", 3);
+    /*now prepare a string to check for a previous alternate _2col or 3_col*/
+    strncpy(alt, ans, 10);
+    if (col == 3) alt[1] = '2';
+    else if (col == 2) alt[1] = '3';
+
     /*if not equal to NULL, find '.' then copy "_?col"*/
     if ( strrchr(nm,'.') )
     {
         /*check if filename contains _?col already*/
-        /*if strncmp is 0 identical*/
-        /*if not identical copy extension to end of ans*/
-        if ( strncmp( (strrchr(nm,'.')-5), ans, 5) )
-            strncpy( ans+5, (strrchr(nm,'.')), 5);	        
-        
-        /*else identical so copy just extension to ans*/
-        else strcpy( ans, (strrchr(nm,'.')));
+        /*if strncmp is 0 --> identical*/
+        /*if identical copy new _?col to end of nm*/
+        if ( ! strncmp( (strrchr(nm,'.')-5), ans, 5) ||
+                ! strncmp( (strrchr(nm,'.')-5), alt, 5))
+        {
+            strncpy( (strrchr(nm,'.'))-5, ans, 5);
+            strcpy( ans, (strrchr(nm,'.')) );
+        }	        
+        /*else not identical so copy extension to ans to ensure
+            file extension doesn't change*/
+        else strncpy( ans+5, (strrchr(nm,'.')), 5);
         
         /*copy ans to nm*/
         strcpy( (strrchr(nm,'.')), ans );
