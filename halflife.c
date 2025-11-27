@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
             numch = ft.ndp;
             
             /*if plotting prog exists, fill plot options with spectrum parameters
-                i.e. X and Y min and max and major tick separation*/
+                i.e. X min and X and Y max and major tick separation*/
             if (plt && strt) plot_scale_set(ans,numch);
 	    strt = 0;
             
@@ -1087,7 +1087,7 @@ void col_determ(FILE *file1, int *col)
     	    /*check how many columns of numbers are present*/
     	    else if ( (isdigit(hash)) != 0 )
     	    {
-    		/*if number increment col flag*/
+    		/*if number is second column set 2 col. flag*/
     		if ( i > 0)
 		{
 		    /*brackets necessary round *col to increment what it
@@ -1311,8 +1311,8 @@ int find_strt_end_zeros(int numch)
             while (ask_yn(ans,0))
             {
                 /*set x12[] to lim[] for printing*/
-                x12[0] =lim[0];
-                x12[1] =lim[1];
+                x12[0] = lim[0];
+                x12[1] = lim[1];
                 read_par(x12, 0, 2, "Enter lower and upper limits for data chan#");
                 lim[0] = (int)(x12[0]+0.5);
                 lim[1] = (int)(x12[1]+0.5);
@@ -1341,7 +1341,7 @@ int find_strt_end_zeros(int numch)
         }
         else
         {
-            lim[0] = 0.0;
+            lim[0] = 0;
             lim[1] = numch;
             printf("%sNumber of data channels for fitting: %d%s\n",
                 clr[2],numch,clr[0]);
@@ -2120,7 +2120,7 @@ void plot_scale_set(char ans[],int numch)
     spec_max(0);
 
     plot_scale_set_par("XMIN",ft.x[0],ans);
-    plot_scale_set_par("YMIN",ft.y[0],ans);
+    plot_scale_set_par("YMIN",0.0,ans);
     /*XMAX rounded up to nearest 50*/
     plot_scale_set_par("XMAX",(double)(50*(int)(ft.x[numch-1]/50.0 + 1.0)),ans);
     /*YMAX plus twice the uncertainty rounded up to nearest 10*/
@@ -2458,7 +2458,7 @@ void spec_prop(double init[])
             /*store new central channel*/
             sp_mx[k][0] = (double)i + ((double)win/2.0);
             /*now check other maxima and swap order as required*/
-            while (k > 0 && mx > sp_mx[k-1][1]) 
+            while (k > 0 && mx > sp_mx[k-1][1])
             {
                 /*shift old values to next element in array*/
                 sp_mx[k][1] = sp_mx[k-1][1];
@@ -2476,7 +2476,8 @@ void spec_prop(double init[])
     {
         printf("Spectrum maxima (x3) using window size of %d channels for integration.\n",win);
         for (i = 0; i < 3; i++)
-            printf("ch = %5f int = %10.1f\n",sp_mx[i][0],sp_mx[i][1]);
+            printf("ch = %5f (x: %.1f) int = %10.1f\n",
+                  sp_mx[i][0],ft.x[(int)(sp_mx[i][0]+0.5)],sp_mx[i][1]);
     }
     
     /*find three minima using window of width win channels*/
@@ -2493,8 +2494,8 @@ void spec_prop(double init[])
             if (ft.y[i+j] == 0.0) cntz++;
         }
         
-        /*compare to previous lowest minima and if lower store new values
-          with additional check that few than half ft.y[] values are zero*/
+        /*compare to previous highest minima and if lower store new values
+          with additional check that fewer than half ft.y[] values are zero*/
         k = 2;
         if (k > 0 && mn < sp_mn[k][1] && mn != 0 && cntz < (int)(win/2.0) )
         {
@@ -2521,9 +2522,9 @@ void spec_prop(double init[])
     {
         printf("Spectrum minima (x3) using window size of %d channels for integration.\n",win);
         for (i = 0; i < 3; i++)
-            printf("ch = %5f int = %10.1f\n",sp_mn[i][0],sp_mn[i][1]);
+            printf("ch = %5f (x: %.1f) int = %10.1f\n",
+                  sp_mn[i][0],ft.x[(int)(sp_mn[i][0]+0.5)],sp_mn[i][1]);
     }
-    
     
     /*Now, take maximum and move LEFT to find where integration drops to half*/
     for (i = (int)(sp_mx[0][0] - ((double)win/2.0)); i > lim[0]; i--)
@@ -2550,10 +2551,10 @@ void spec_prop(double init[])
         }
     }
     if (vb) printf("Widths around maximum (ch:%d):\n"
-           "    0.5FWHM  left at %.1f ch (FWHM = %.1f ch)\n"
-           "    0.5FWHM right at %.1f ch (FWHM = %.1f ch)\n",
-          (int)sp_mx[0][0],wdth[0],2.0*(sp_mx[0][0]-wdth[0]),
-          wdth[1],2.0*(wdth[1]-sp_mx[0][0]));
+           "    0.5FWHM  left at %.1f ch, (x: %.1f) (FWHM = %.1f ch)\n"
+           "    0.5FWHM right at %.1f ch, (x: %.1f) (FWHM = %.1f ch)\n",(int)(sp_mx[0][0]+0.5),
+           wdth[0],ft.x[(int)(sp_mx[0][0]+0.5)],2.0*(sp_mx[0][0]-wdth[0]),
+           wdth[1],ft.x[(int)(sp_mx[0][0]+0.5)],2.0*(wdth[1]-sp_mx[0][0]));
     /*set widths to be differences from spectrum max.*/
     wdth[0] -= sp_mx[0][0];
     wdth[1] -= sp_mx[0][0];
@@ -2571,7 +2572,7 @@ void spec_prop(double init[])
     /*init[1] is FWHM estimate*/
     init[1] = 2.0*abs(wdth[1]);
     /*init[2] is centroid estimate*/
-    init[2] = sp_mx[0][0];
+    init[2] = ft.x[(int)(sp_mx[0][0]+0.5)];
     /*init[NUMPARS] is background estimate
         (increase win by 50% to make sure bkgnd isn't over estimated*/
     init[NUMPARS] = sp_mn[0][1]/((double)(win*1.5));
