@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     extern double fit, derivs[NUMPARS], bkgnd, fact[NUMPARS+1], spc[1], x12[2];
     extern int gdfit, lim[2], pid[40], pcnt;
     extern char par_nm[NUMPARS+1][CHPLEN], func_nm[NUMFUNC+1][CHFLEN], clr[10][12];
-    double  chisq = 0.0, init[NUMPARS+1], bklo = 0.0, bklo2, chisqo = 10000.0;
+    double  chisq = 0.0, init[NUMPARS+1], bklo = 0.0, bklo2, chisqlo;
     int     f, i, md = 0, numch = 0, col = 0, flginp = 0, flginit = 0, r = -1;
     int     aut = 0, bkcnt, flgbkpm, plt = 0, strt = 1;
     char    ans[3*CHLEN] = "", inname[CHLEN] = "", outname[CHLEN] = "";
@@ -451,17 +451,25 @@ int main(int argc, char *argv[])
 	    printf("Data will now be compressed by factor of 2\n"
 	    	" Initial guesses for coefficient will also be compressed\n");
 	    compress2(inname, outname);
-            for (i = 0; i < (NUMPARS - 1); i++) printf("###1init[%d]:%f \n",i,init[i]);
+            /*new ft.ndp has been set by compress2()*/
+            numch = ft.ndp;
+            printf("Updating initial parameters. BEFORE compression:\n");
+            for (i = 0; i < NUMPARS+1; i++) printf("    %s = %.3f\n",par_nm[i],init[i]);
             
             /*change initial guesses for parameters and apply fact[] for use in eval()*/
-	    for (i = 0; i < NUMPARS; i++)
+	    for (i = 0; i < 3; i++)
             {
+                /*all divided by 2 (as channel no. based) except scaling factor
+                    which stays the same as is area under the curve*/
                 if (ft.ad[i] != 1) init[i] /= 2.0;
-                else init[i] *= 2.0;
                 ft.pars[i] = init[i]*fact[i];
             }
 	    init[NUMPARS] *= 2;
 	    bkgnd *= 2;
+            printf("Updating initial parameters. AFTER compression:\n");
+            for (i = 0; i < NUMPARS+1; i++) printf("    %s = %.3f\n",par_nm[i],init[i]);
+            /*call plot_scale_set(), to update sp_max and XMAX and YMAX for plot*/
+            plot_scale_set(ans,numch);
 	}
 	else if (md == 6 && r == 0)
 	{
@@ -471,7 +479,7 @@ int main(int argc, char *argv[])
             bklo = bkgnd;
 	    bklo2 = bkgnd;
             flgbkpm = 1;
-            chisqo = 10000.0;
+            chisqlo = 10000.0;
  	    printf("  Bkgnd     t1/2    Chisq/D.O.F \n");
             while (1)
             {
@@ -479,11 +487,14 @@ int main(int argc, char *argv[])
 	    	{
 		    printf("  %.2f    %.2f    %.5f\n",
 		        bkgnd,(ft.pars[0]/fact[0]),chisq);
-	    	    /*if lower chisq update bkgnd*/
-                    if (chisq < chisqo)
+	    	    /*if lower chisq update best bkgnd as bklo*/
+                    if (chisq < chisqlo)
                     {
+                        /*printf("chisq: %.5f, chisqlo: %.5f\n",chisq,chisqlo);*/
                         bklo = bkgnd;
                         bkcnt = 0;
+                        /*update chisq*/
+                        chisqlo = chisq;
                     }
                     /*else increment 'no improvement in chisq' counter*/
                     else bkcnt++;
@@ -498,8 +509,6 @@ int main(int argc, char *argv[])
                         /*printf("Sign flgbkpm=%d (blko2-bklo:%f - %f)\n",
                             flgbkpm,bklo2,bklo);*/
                     }
-		    /*update chisq*/
-                    chisqo = chisq;
 		}
 		else printf(" Bad fit!\n");
 /*		chi2(&chisq);
@@ -508,16 +517,23 @@ int main(int argc, char *argv[])
                 if (bkcnt > 3)
                 {
                     bkgnd = bklo;
+                    /*printf("In 1st break if, bklo:%.2f, bkgnd: %.2f\n",bklo,bkgnd);*/
                     break;
                 }
                 /*update bkgnd value for testing*/
                 if (flgbkpm == 1 || (flgbkpm == -1 && bkgnd - 0.1 >= 0.0))
                         bkgnd += (double)flgbkpm*0.1;
-                /*if can't up-date bkgnd, stop*/
-                else break;
+                /*if can't up-date bkgnd, stop, e.g. if bkgnd has descended to 0.0*/
+                else
+                {
+                    /*printf("In 2nd break if, bklo:%.2f, bkgnd: %.2f\n",bklo,bkgnd);*/
+                    bkgnd = bklo;
+                    break;
+                }
                 /*printf("bkcnt = %d, bkgnd = %f (%f), %d\n",
                     bkcnt,bkgnd,bklo,flgbkpm);*/
             }
+            printf("Chisqlo: %.5f for Bkgnd: %.2f\n",chisqlo,bkgnd);
  /*    	    read_par(init, 4, 1, "Enter value for background constant background level (not fitted)\n");*/
 	    init[NUMPARS] = bkgnd;
 	    /*write output file*/    
@@ -526,6 +542,10 @@ int main(int argc, char *argv[])
 	    {
 		/*write output file*/
 	    	printf(" ==> Writing output for bkgnd = %f\n",bkgnd);
+                /*remove "(not fitted)" from background parameter*/
+                memset(par_nm[NUMPARS],'\0',sizeof(char)*CHPLEN);
+                strncpy(par_nm[NUMPARS], "Background level", 16);
+
 	    	write_output(inname, outname, init, ft.x, &fit, chisq, 0);
                 /*ask about overlaying fit on data in P_PROG
                     providing P_PROG exists and file is not an ORTEC (.Spe) file*/
@@ -1260,7 +1280,7 @@ int find_strt_end_zeros(int numch)
     
     if (i < numch && i > 0)
     {
-        printf("\n\tData start at data ch#%d (x=%.2f,y=%.2f)\n",
+        printf("    Data >0 start at data ch#%d (x=%.2f,y=%.2f)\n",
                         i,ft.x[i],ft.y[i]);
         /*here, if set, preserve current limit for display*/
         if (lim[0] == 0) lim[0] = i;
@@ -1276,7 +1296,7 @@ int find_strt_end_zeros(int numch)
     if (i > lim[0] && i < (numch -1) )
     {
         if(!flgstrt) printf("\n");
-        printf("\tData end at data ch#%d (x=%.2f,y=%.2f)\n",
+        printf("    Data >0 end at data ch#%d (x=%.2f,y=%.2f)\n",
                         i,ft.x[i],ft.y[i]);
         /*here, if set, preserve current limit for display*/
         if (lim[1] == (numch - 1)) lim[1] = i;
@@ -1365,7 +1385,10 @@ int fitter(int maxits,  double *chisq, int vb)
 
     /* this subroutine is a modified version of 'CURFIT', in Bevington */
     /* see page 237. From RadWare by D.C. Radford at ORNL*/
-  
+    
+    /*each time fitter is called, reset background to say "(not fitted)"*/
+    strncpy(par_nm[NUMPARS], "Background level (not fitted)", 29);
+    
     *chisq = 0.0;
     
     for (i = 0; i < npars; i++)
@@ -2115,9 +2138,13 @@ void plot_scale_set(char ans[],int numch)
 {
     int i;
     
-    printf("Setting plotting scale parameters:\n");
-    /*get spectrum maximum with mode = 0 for silent*/
+    printf("\nSetting plotting scale parameters:\n");
+    /*get spectrum maximum (sp_max) with mode = 0 for silent*/
     spec_max(0);
+    
+    /*first reset static i in plot_scale_set_par*/
+    memset(P_OPT_END,'\0',sizeof(char)*CHLEN);
+    plot_scale_set_par("RESET",0,ans);
 
     plot_scale_set_par("XMIN",ft.x[0],ans);
     plot_scale_set_par("YMIN",0.0,ans);
@@ -2125,6 +2152,7 @@ void plot_scale_set(char ans[],int numch)
     plot_scale_set_par("XMAX",(double)(50*(int)(ft.x[numch-1]/50.0 + 1.0)),ans);
     /*YMAX plus twice the uncertainty rounded up to nearest 10*/
     plot_scale_set_par("YMAX",10*(int)((sp_max+2.0*sqrt(sp_max))/10.0 + 1.0),ans);
+    printf("    %s\n",P_OPT_END);
     /*XTCKMAJ to a fifth of the maximum rounded down to nearest 10*/
     if (ft.x[numch-1] > 100.0) i = 20.0*(int)(ft.x[numch-1]/100.0);
     else if (ft.x[numch-1] > 30.0) i = 10;
@@ -2133,9 +2161,9 @@ void plot_scale_set(char ans[],int numch)
     plot_scale_set_par("XTCKMAJ",i,ans);
     /*note XTCKMIN is the number of ticks not the separation*/
     plot_scale_set_par("XTCKMIN",5,ans);
-    /*copy remainder of string*/
+    /*copy remainder of string by sending string with no match in P_OPT_FIN*/
     plot_scale_set_par("FFFF",0,ans);
-    printf("P_OPT_END: %s\n",P_OPT_END);
+    /*printf("P_OPT_END: %s\n",P_OPT_END);*/
     return ;
 } /*END plot_scale_set()*/
 
@@ -2145,6 +2173,14 @@ void plot_scale_set(char ans[],int numch)
 void plot_scale_set_par(char p_par[], double val, char ans[])
 {
     static int i = 0, j = 0;
+    
+    /*reset i and j when RESET option is set*/
+    if (! strncmp(p_par,"RESET",5) )
+    {
+        i = 0;
+        j = 0;
+        return ;
+    }
     
     while ( i < CHLEN && j < strlen(P_OPT_FIN) && strncmp(P_OPT_FIN+j,p_par,strlen(p_par)) )
     {
