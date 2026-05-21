@@ -2595,7 +2595,7 @@ void spec_prop(double init[])
     wdth[0] -= sp_mx[0][0];
     wdth[1] -= sp_mx[0][0];
     
-    if (abs(wdth[1]) > abs(wdth[0]))
+    if (fabs(wdth[1]) > fabs(wdth[0]))
     {
         mx = wdth[1];
         wdth[1] = wdth[0];
@@ -2604,9 +2604,9 @@ void spec_prop(double init[])
     
     /*fill initial parameters*/
     /*init[0] is half-life estimate*/
-    init[0] = abs(wdth[0]);
+    init[0] = fabs(wdth[0]);
     /*init[1] is FWHM estimate*/
-    init[1] = 2.0*abs(wdth[1]);
+    init[1] = 2.0*fabs(wdth[1]);
     /*init[2] is centroid estimate*/
     init[2] = ft.x[(int)(sp_mx[0][0]+0.5)];
     /*init[NUMPARS] is background estimate
@@ -2686,7 +2686,7 @@ void write_output(char inname[], char outname[], double init[], double x[],
     printf("\n++++++++++++++++Results of fit++++++++++++++++\n");    
     for (i = 0; i < NUMPARS; i++)
     {
-        if ( abs(ft.pars[i]/fact[i]) < 0.01 || abs(ft.pars[i]/fact[i]) >= 1.00e5)
+        if ( fabs(ft.pars[i]/fact[i]) < 0.01 || fabs(ft.pars[i]/fact[i]) >= 1.00e5)
             printf("%c%1d) %s = %.3g",
                 (i < 10) ? ' ' : '1',(i < 10) ? i : i-10,par_nm[i],(ft.pars[i]/fact[i]));
         else printf("%c%1d) %s = %.4f",
@@ -2726,7 +2726,7 @@ void write_output(char inname[], char outname[], double init[], double x[],
                 (i < 10) ? ' ' : '1',(i < 10) ? i : i-10,par_nm[i],(ft.pars[i]/fact[i]));
 
         if (mode != 2 || (mode == 2 && ft.freepars[i])) fprintf(fout, " %s",(ft.freepars[i]) ? "+/- " : "FIXED\n");
-        if (ft.freepars[i]) fprintf(fout, "%.3f\n",(i == 0) ? abs(ft.errs[i]/fact[i]) : (ft.errs[i]/fact[i]));
+        if (ft.freepars[i]) fprintf(fout, "%.3f\n",(i == 0) ? fabs(ft.errs[i]/fact[i]) : (ft.errs[i]/fact[i]));
         if (mode == 2 && !ft.freepars[i]) fprintf(fout, " (no fit)\n");
     }            
 
