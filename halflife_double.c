@@ -149,19 +149,19 @@ int main(int argc, char *argv[])
     store_colours();
 
     /*copy parameter names to array*/
-    strncpy(par_nm[0], "t_1/2", 5);
-    strncpy(par_nm[1], "FWHM", 4);
-    strncpy(par_nm[2], "Centroid", 8);
-    strncpy(par_nm[3], "Scaling factor", 14);
-    strncpy(par_nm[4], "Left-to-right ratio", 19);
-    strncpy(par_nm[5], "Relative Prompt Gaussian scaling", 32);
-    strncpy(par_nm[NUMPARS], "Background level (not fitted)", 29);
+    strncpy(par_nm[0], "t_1/2", 6);
+    strncpy(par_nm[1], "FWHM", 5);
+    strncpy(par_nm[2], "Centroid", 9);
+    strncpy(par_nm[3], "Scaling factor", 15);
+    strncpy(par_nm[4], "Left-to-right ratio", 20);
+    strncpy(par_nm[5], "Relative Prompt Gaussian scaling", 33);
+    strncpy(par_nm[NUMPARS], "Background level (not fitted)", 30);
     
     /*copy function names to function components in eval()*/
-    strncpy(func_nm[0], "Gaus-exp conv right-hand side", 29);
-    strncpy(func_nm[1], "Gaus-exp conv left-hand side", 28);
-    strncpy(func_nm[2], "Prompt Gauss component", 22);
-    strncpy(func_nm[NUMFUNC], "Background", 10);
+    strncpy(func_nm[0], "Gaus-exp conv right-hand side", 30);
+    strncpy(func_nm[1], "Gaus-exp conv left-hand side", 29);
+    strncpy(func_nm[2], "Prompt Gauss component", 23);
+    strncpy(func_nm[NUMFUNC], "Background", 11);
     
     /*initialise background parameter (constant offset) to zero*/
     bkgnd = 0.0;
@@ -567,7 +567,7 @@ int main(int argc, char *argv[])
 	    	printf(" ==> Writing output for bkgnd = %f\n",bkgnd);
                 /*remove "(not fitted)" from background parameter*/
                 memset(par_nm[NUMPARS],'\0',sizeof(char)*CHPLEN);
-                strncpy(par_nm[NUMPARS], "Background level", 16);
+                strncpy(par_nm[NUMPARS], "Background level", 17);
 
 	    	write_output(inname, outname, init, ft.x, &fit, chisq, 0);
                 /*ask about overlaying fit on data in P_PROG
@@ -693,6 +693,7 @@ int main(int argc, char *argv[])
         else if (md == (NUMOPT - 1))
         {
             ft.ndp = find_strt_end_zeros(ft.ndp);
+            numch = ft.ndp;
         }
         /*get spectrum properties and fill initial values if auto mode enabled
             then do fit directly*/
@@ -1314,18 +1315,20 @@ void file_status(char *fname, int len)
 /****************************************************************************/
 int find_strt_end_zeros(int numch)
 {
-    int     i = 0, flgstrt = 0, flgend = 0;
+    static int flgstrt = 0, flgend = 0;
+    int     i = 0;
     char    ans[3*CHLEN] = "";
-    
+        
     /*check start y value of data for zeros*/
     while (i < numch && ft.y[i] == 0.0f) i++;
-    
+   
     if (i < numch && i > 0)
     {
         printf("    Data >0 start at data ch#%d (x=%.2f,y=%.2f)\n",
                         i,ft.x[i],ft.y[i]);
         /*here, if set, preserve current limit for display*/
-        if (lim[0] == 0) lim[0] = i;
+        /*if flgstrt already set, then change lim[0].*/
+        if (lim[0] == 0 || flgstrt) lim[0] = i;
         flgstrt = 1;
     }
     /*else leave limit as is - set in spectrum read function*/
@@ -1334,14 +1337,15 @@ int find_strt_end_zeros(int numch)
     /*check end y value of data for zeros*/
     i = numch - 1;
     while (i > 0 && ft.y[i] == 0.0f) i--;
-
-    if (i > lim[0] && i < (numch -1) )
+    
+    if (i > lim[0] && ( (i <  (numch - 1)) || (i < lim[1]) ) )
     {
-        if(!flgstrt) printf("\n");
+        if (!flgstrt) printf("\n");
         printf("    Data >0 end at data ch#%d (x=%.2f,y=%.2f)\n",
                         i,ft.x[i],ft.y[i]);
         /*here, if set, preserve current limit for display*/
-        if (lim[1] == (numch - 1)) lim[1] = i;
+        /*if flgend already set, then change lim[1].*/
+        if (lim[1] == (numch - 1) || (flgend && i < lim[1]) ) lim[1] = i;
         flgend = 1;
     }
     /*else leave limit as is - set in spectrum read function*/
@@ -1429,7 +1433,7 @@ int fitter(int maxits,  double *chisq, int vb)
     /* see page 237. From RadWare by D.C. Radford at ORNL*/
     
     /*each time fitter is called, reset background to say "(not fitted)"*/
-    strncpy(par_nm[NUMPARS], "Background level (not fitted)", 29);
+    strncpy(par_nm[NUMPARS], "Background level (not fitted)", 30);
     
     *chisq = 0.0;
     
@@ -1910,11 +1914,12 @@ int maestro_read(char fname[], int *col)
 
     /*print real and live times to screen and convert from 20ms units to sec*/
     /*Copy day and month*/
-    strncpy(dt, maest_header.dt, 5);
+    strncpy(dt, maest_header.dt, 8);
     /*check year, if maest_header.dt[7] == 1 year is 2000+YY else 1900+YY*/
-    if (maest_header.dt[7] == '1') strncpy(dt+5, "20", 2);
-    else strncpy(dt+5, "19", 2);
-    strncpy(dt+7, maest_header.dt+5, 2);
+    /*if (maest_header.dt[7] == '1') strncpy(dt+5, "20", 2);*/
+    if (maest_header.dt[7] == '1') memcpy(dt+5, "20", 2);
+    else strncpy(dt+5, "19", 3);
+    strncpy(dt+7, maest_header.dt+5, 3);
     dt[9] = '\0';
     printf("Spectrum info: %s at %c%c:%s\n"
            "               Real time: %d s\n"
@@ -1930,6 +1935,7 @@ int maestro_read(char fname[], int *col)
     fclose(file1);
     return maest_header.channels;
 } /*END maestro_read()*/
+
 
 /*==========================================================================*/
 /*matinv: invert matrix     	    	    	    	    	    	    */
@@ -2235,7 +2241,7 @@ void plot_scale_set_par(char p_par[], double val, char ans[])
     
     /*convert val to string*/
     itoa((int)val,ans);
-    strncat(P_OPT_END+i,ans,strlen(ans));
+    strncat(P_OPT_END+i,ans,CHLEN-i-1);
     /*increase offsets ready for next copy*/
     i += strlen(ans);
     j += strlen(p_par);
@@ -2254,7 +2260,7 @@ void prep_write(char inname[], char outname[], char nm[], char ans[],
     /*put col as char in ans[1]*/
     itoa(col, ans+1);
     ans[0] = '_';
-    strncpy(ans+2, "col", 3);
+    strncpy(ans+2, "col", 4);
     /*now prepare a string to check for a previous alternate _2col or 3_col*/
     strncpy(alt, ans, 10);
     if (col == 3) alt[1] = '2';
