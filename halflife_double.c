@@ -22,7 +22,7 @@
 #define WN        10         /*window size (in chans) for smoothing for finding spec max./min.*/
 #define P_PROG    "xmgrace"  /*plotting program to be called from command line*/
 #define P_OPT_BEG ""         /*plotting program options at beginning (before filenames)*/
-/*#define P_OPT_END "-world 0 0 2050 1500 -pexec \"xaxis tick major 500\" -pexec \"xaxis tick minor ticks 5\""*/
+/*#define P_OPT_END "-world 0 0 2050 1500 -pexec \"xaxis tick major 500\" -pexec \"xaxis tick minor ticks 4\""*/
 #define P_OPT_FIN "-world XMIN YMIN XMAX YMAX -pexec \"xaxis tick major XTCKMAJ\" -pexec \"xaxis tick minor ticks XTCKMIN\""
                              /*plotting program options at end (after filenames)
                                 XMIN, YMIN, XTICK etc will be substituted with spectrum values*/
@@ -1186,7 +1186,7 @@ void col_determ(FILE *file1, int *col)
 void compress2(char inname[], char outname[])
 {
     static int	fact = 2;
-    int    i;
+    int    i, j, nch_old;
     char   ext[10] = "", next[10] = "-", nname[CHLEN] = "";
      
     /*do compression*/
@@ -1198,8 +1198,17 @@ void compress2(char inname[], char outname[])
 		(ft.dy[(2*i)+1]*ft.dy[(2*i)+1]) );
     }
     printf("\t ....done. %d channels\n",i);
-
+    /*store old spectrum length for zeroing array elements*/
+    nch_old = ft.ndp;
     ft.ndp = i;
+    /*now zero remaining channels no longer used in case of
+        future compressions*/
+    for (j = i; j < nch_old; j++)
+    {
+        ft.x[j] = 0.0;
+        ft.y[j] = 0.0;
+        ft.dy[j] = 0.0;
+    }
     /*get output filename extension*/
     strcpy(nname, inname);
     if ( (strrchr(nname,'.')) ) strcpy( ext, (strrchr(nname,'.')) );
